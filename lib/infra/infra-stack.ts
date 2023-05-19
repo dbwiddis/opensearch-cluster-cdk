@@ -84,7 +84,7 @@ export class InfraStack extends Stack {
     });
 
     const ec2InstanceType = (props.cpuType === AmazonLinuxCpuType.X86_64)
-      ? InstanceType.of(InstanceClass.C5, InstanceSize.XLARGE) : InstanceType.of(InstanceClass.C6G, InstanceSize.XLARGE);
+      ? InstanceType.of(InstanceClass.C5, InstanceSize.XLARGE2) : InstanceType.of(InstanceClass.C6G, InstanceSize.XLARGE);
 
     const alb = new NetworkLoadBalancer(this, 'publicNlb', {
       vpc: props.vpc,
@@ -131,7 +131,8 @@ export class InfraStack extends Stack {
         }],
         init: CloudFormationInit.fromElements(...InfraStack.getCfnInitElement(this, clusterLogGroup, props)),
         initOptions: {
-          ignoreFailures: false,
+          ignoreFailures: true,          
+          printLog: true,
         },
       });
       Tags.of(singleNodeInstance).add('role', 'client');
@@ -182,7 +183,8 @@ export class InfraStack extends Stack {
           }],
           init: CloudFormationInit.fromElements(...InfraStack.getCfnInitElement(this, clusterLogGroup, props, 'manager')),
           initOptions: {
-            ignoreFailures: false,
+            ignoreFailures: true,          
+            printLog: true,
           },
           signals: Signals.waitForAll(),
         });
@@ -214,7 +216,8 @@ export class InfraStack extends Stack {
         }],
         init: CloudFormationInit.fromElements(...InfraStack.getCfnInitElement(this, clusterLogGroup, props, seedConfig)),
         initOptions: {
-          ignoreFailures: false,
+          ignoreFailures: true,          
+          printLog: true,
         },
         signals: Signals.waitForAll(),
       });
@@ -241,7 +244,8 @@ export class InfraStack extends Stack {
         }],
         init: CloudFormationInit.fromElements(...InfraStack.getCfnInitElement(this, clusterLogGroup, props, 'data')),
         initOptions: {
-          ignoreFailures: false,
+          ignoreFailures: true,          
+          printLog: true,
         },
         signals: Signals.waitForAll(),
       });
@@ -271,7 +275,8 @@ export class InfraStack extends Stack {
           }],
           init: CloudFormationInit.fromElements(...InfraStack.getCfnInitElement(this, clusterLogGroup, props, 'client')),
           initOptions: {
-            ignoreFailures: false,
+            ignoreFailures: true,          
+            printLog: true,
           },
           signals: Signals.waitForAll(),
         });
@@ -302,7 +307,8 @@ export class InfraStack extends Stack {
           }],
           init: CloudFormationInit.fromElements(...InfraStack.getCfnInitElement(this, clusterLogGroup, props, 'ml')),
           initOptions: {
-            ignoreFailures: false,
+            ignoreFailures: true,          
+            printLog: true,
           },
           signals: Signals.waitForAll(),
         });
@@ -396,6 +402,21 @@ export class InfraStack extends Stack {
       InitCommand.shellCommand('set -ex; sudo echo "vm.max_map_count=262144" >> /etc/sysctl.conf;sudo sysctl -p'),
       InitCommand.shellCommand(`set -ex;mkdir opensearch; curl -L ${props.distributionUrl} -o opensearch.tar.gz;`
                 + 'tar zxf opensearch.tar.gz -C opensearch --strip-components=1; chown -R ec2-user:ec2-user opensearch;', {
+        cwd: '/home/ec2-user',
+        ignoreErrors: false,
+      }),
+      // add extensions.yml  
+      InitCommand.shellCommand('set -ex;cd opensearch;mkdir extensions;'
+                + 'echo "extensions:" > extensions/extensions.yml;'
+                + 'echo "  - name: anomaly-detection" >> extensions/extensions.yml;'
+                + 'echo "    uniqueId: ad" >> extensions/extensions.yml;'
+                // change this to extension IP or hostname
+                + 'echo "    hostAddress: \'10.0.8.167\'" >> extensions/extensions.yml;'
+                + 'echo "    port: \'4532\'" >> extensions/extensions.yml;'
+                + 'echo "    version: \'1.0\'" >> extensions/extensions.yml;'
+                + 'echo "    opensearchVersion: \'2.8.0\'" >> extensions/extensions.yml;'
+                + 'echo "    minimumCompatibleVersion: \'2.8.0\'" >> extensions/extensions.yml;'
+                + 'chown -R ec2-user:ec2-user extensions;', {
         cwd: '/home/ec2-user',
         ignoreErrors: false,
       }),

@@ -19,3 +19,6 @@ coverage.lcov
 *.iml
 .idea/
 .vscode/
+*.pem
+.gitignore
+.DS_Store
